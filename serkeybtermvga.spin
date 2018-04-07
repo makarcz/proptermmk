@@ -69,8 +69,8 @@ CON
 OBJ
   sdfat   : "fsrw"                     '  r/w file system
   scr     : "vga_hires_text_mk"
-  serkb   : "serkb_recv"             '  serkb_recv object is interchangeable
-  'serkb   : "keyboard"               ' with keyboard object - no more code
+  'serkb   : "serkb_recv"             '  serkb_recv object is interchangeable
+  serkb   : "keyboard"               ' with keyboard object - no more code
                                      '  changes are required, just swap them here
   rs232   : "FullDuplexSerial_mk"
   'rs232   : "rs232_driver_mk"
@@ -81,7 +81,7 @@ OBJ
 
 DAT
   str01     BYTE "Serial Keyboard + VGA Terminal (80x40).",NL,0
-  strFmVer  BYTE "Firmware version 2.0.",NL,0
+  strFmVer  BYTE "Firmware version 2.2.",NL,0
   strCpr01  BYTE "Copyright (C) by Marek Karcz 2016,2017.",NL,0
   strCpr02  BYTE "All rights reserved.",NL,0
   str01_1   BYTE NL,"Press (at any time):",NL,NL,0
@@ -341,13 +341,29 @@ PUB EnterFileName '| n, q
   Cursor
   GetStr(@fname, 13)
 
-PUB SendFileFromSD2Serial | n, q, s, t
+PUB SendFileFromSD2Serial | n, q, s, t, b, m
+  b := FALSE ' b = mode, TRUE - binary / FALSE - ASCII
+  m := TRUE  ' m = TRUE - monitor commands / FALSE - Text
   if sdcard_found < 0
     ScrStr(@strNoSd)
     return
   'SDDir
   EnterFileName
   PrnChar(NL)
+  ScrStr(String("Monitor(1) / Binary(2) / Text(3) ?"))
+  repeat
+    key := serkb.Key
+    if key > 0
+      case key
+        "1" :  b := FALSE
+        "2" :  b := TRUE
+        "3" :  m := FALSE
+        OTHER: PrnChar(NL)
+               ScrStr(String("Unknown menu option.",NL))
+               b := FALSE
+      PrnChar(NL)
+      Quit  
+  ReadSerialAndPrint(0)
   ScrStr(String("Fast(1) / Slow(2) ?"))
   repeat
     key := serkb.Key
@@ -367,26 +383,34 @@ PUB SendFileFromSD2Serial | n, q, s, t
   ScrStr(String("*** Loading file ***", NL))
   waitcnt(cnt + clkfreq)
   sdfat.popen(@fname, "r")
-  key := NL
-  rs232.Tx(key & $ff)
-  ReadSerialAndPrint(0)
+  if b == FALSE
+    if m == TRUE
+      key := NL
+      rs232.Tx(key & $ff)
+      ReadSerialAndPrint(0)
   key := 0
   repeat
     key := sdfat.pgetc
     if key < 0
       Quit
-    if key == NL
-      key := 0
-    if key == CR
-      key := NL
-    if key > 0      
+    if b == FALSE
+      if key == NL
+        key := 0
+      if key == CR
+        key := NL
+      if key > 0      
+        rs232.Tx(key & $ff)
+        waitcnt(cnt + clkfreq/t)
+      if key == NL
+        waitcnt(cnt + clkfreq/s)
+    else
       rs232.Tx(key & $ff)
       waitcnt(cnt + clkfreq/t)
-    if key == NL
-      waitcnt(cnt + clkfreq/s)
     ReadSerialAndPrint(0)
+  waitcnt(cnt + clkfreq*2)
   ReadSerialAndPrint(0)
-  PrnChar(NL)
+  if m == TRUE
+    PrnChar(NL)
   sdfat.pclose
 
 PUB SaveMemory2FileSD | m, adrbeg, adrend
@@ -485,6 +509,8 @@ PUB SaveOutput2FileSD | m
     rcv := rs232.RxTime(2000)
     if rcv < 0
       Quit
+    if rcv == CR
+      Next
     if rcv <> NL
       if m < 255
         buf[m++] := rcv & $ff
@@ -648,7 +674,10 @@ PUB PrnChar(c) | n, lcol, lrow
                    return
                           
         OTHER    : return
-  if c == NL
+  if c == CR
+    'ScrOut(SPC) 'uncomment only if own cursor impl. is used
+    col := 0
+  if c == NL ' NOTE: NL here actually emulates CR,NL
     'ScrOut(SPC) 'uncomment only if own cursor impl. is used
     col := 0
     IncRow

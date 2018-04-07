@@ -1,6 +1,6 @@
 PropTermMK
 Author: Marek Karcz
-Copyright (c) 2017 Marek Karcz
+Copyright (c) 2017, 2018 Marek Karcz
 =======================================
 This project contains HW blueprints and firmware source code for a Parallax
 Propeller based device which functions as a character terminal (ANSI) and
@@ -13,7 +13,8 @@ also be a mass storage device, but rather slow.
 Its functions include:
 
 * Sending and receiving characters over RS232 port in an interactive way.
-* Reading contents of text file from SD card and sending them to RS232 port.
+* Reading contents of text or binary file from SD card and sending them to
+  RS232 port.
 * Sending memory read command in format 'r <start_addr_hex>-<end_addr_hex>'
   to a device connected to RS232 port and then receiving response from it
   and saving it in file on SD card. This feature is specific to MKHBC-8-Rx
@@ -27,8 +28,8 @@ Its functions include:
   is not interactive (no input) and fast (no more than 2 seconds between
   characters transmission). This way user may save listing of BASIC
   program when working with BASIC interpreter or listing of any program
-  for any interpreter and them such listing can be loaded back to the
-  interpreter from file.
+  for any interpreter and then such listing can be loaded back to the
+  interpreter from file. Also helpful to save text from word processor.
 * List the directory of files on SD card.
 * List contents of text file on SD card.
 * Delete files on SD card.
